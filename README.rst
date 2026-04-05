@@ -17,6 +17,10 @@ Porting Memo
 
   Ported from NanoVG.
 
+* ``gl``
+
+  Ported pure-go opengl, includes only needed functions.
+
 * ``fontstashmini/fontstash_mini.go``
 
   Ported from `fontstash <https://github.com/memononen/fontstash>`_. It includes only needed functions.
