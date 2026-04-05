@@ -1,7 +1,7 @@
 package nanovgo
 
 import (
-	"github.com/goxjs/gl"
+	"github.com/golang-gui/nanovgo/gl"
 )
 
 const (

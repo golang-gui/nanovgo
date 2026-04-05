@@ -2,23 +2,24 @@ package nanovgo
 
 import (
 	"bytes"
-	"github.com/shibukawa/nanovgo/fontstashmini"
 	"image"
 	_ "image/jpeg" // to read jpeg
 	_ "image/png"  // to read png
 	"log"
 	"os"
+
+	"github.com/golang-gui/nanovgo/fontstashmini"
 )
 
 // Context is an entry point object to use NanoVGo API and created by NewContext() function.
 //
-// State Handling
+// # State Handling
 //
 // NanoVG contains state which represents how paths will be rendered.
 // The state contains transform, fill and stroke styles, text and font styles,
 // and scissor clipping.
 //
-// Render styles
+// # Render styles
 //
 // Fill and stroke render style can be either a solid color or a paint which is a gradient or a pattern.
 // Solid color is simply defined as a color value, different kinds of paints can be created
@@ -26,14 +27,16 @@ import (
 //
 // Current render style can be saved and restored using Save() and Restore().
 //
-// Transforms
+// # Transforms
 //
 // The paths, gradients, patterns and scissor region are transformed by an transformation
 // matrix at the time when they are passed to the API.
 // The current transformation matrix is a affine matrix:
-//   [sx kx tx]
-//   [ky sy ty]
-//   [ 0  0  1]
+//
+//	[sx kx tx]
+//	[ky sy ty]
+//	[ 0  0  1]
+//
 // Where: sx,sy define scaling, kx,ky skewing, and tx,ty translation.
 // The last row is assumed to be 0,0,1 and is not stored.
 //
@@ -42,23 +45,23 @@ import (
 //
 // Current coordinate system (transformation) can be saved and restored using Save() and Restore().
 //
-// Images
+// # Images
 //
 // NanoVG allows you to load jpg, png, psd, tga, pic and gif files to be used for rendering.
 // In addition you can upload your own image. The image loading is provided by stb_image.
 // The parameter imageFlags is combination of flags defined in ImageFlags.
 //
-// Paints
+// # Paints
 //
 // NanoVG supports four types of paints: linear gradient, box gradient, radial gradient and image pattern.
 // These can be used as paints for strokes and fills.
 //
-// Scissoring
+// # Scissoring
 //
 // Scissoring allows you to clip the rendering into a rectangle. This is useful for various
 // user interface cases like rendering a text edit or a timeline.
 //
-// Paths
+// # Paths
 //
 // Drawing a new shape starts with BeginPath(), it clears all the currently defined paths.
 // Then you define one or more paths and sub-paths which describe the shape. The are functions
@@ -74,7 +77,7 @@ import (
 //
 // The curve segments and sub-paths are transformed by the current transform.
 //
-// Text
+// # Text
 //
 // NanoVG allows you to load .ttf files and use the font to render text.
 //
@@ -98,10 +101,10 @@ import (
 // While this may sound a little odd, the setup allows you to always render the
 // same way regardless of scaling. I.e. following works regardless of scaling:
 //
-//              vg.TextBounds(x, y, "Text me up.", bounds)
-//              vg.BeginPath()
-//              vg.RoundedRect(bounds[0],bounds[1], bounds[2]-bounds[0], bounds[3]-bounds[1])
-//              vg.Fill()
+//	vg.TextBounds(x, y, "Text me up.", bounds)
+//	vg.BeginPath()
+//	vg.RoundedRect(bounds[0],bounds[1], bounds[2]-bounds[0], bounds[3]-bounds[1])
+//	vg.Fill()
 //
 // Note: currently only solid color fill is supported for text.
 type Context struct {
@@ -289,9 +292,10 @@ func (c *Context) SetTransform(t TransformMatrix) {
 
 // SetTransformByValue premultiplies current coordinate system by specified matrix.
 // The parameters are interpreted as matrix as follows:
-//   [a c e]
-//   [b d f]
-//   [0 0 1]
+//
+//	[a c e]
+//	[b d f]
+//	[0 0 1]
 func (cx *Context) SetTransformByValue(a, b, c, d, e, f float32) {
 	t := TransformMatrix{a, b, c, d, e, f}
 	state := cx.getState()
@@ -335,9 +339,11 @@ func (c *Context) Scale(x, y float32) {
 }
 
 // CurrentTransform returns the top part (a-f) of the current transformation matrix.
-//   [a c e]
-//   [b d f]
-//   [0 0 1]
+//
+//	[a c e]
+//	[b d f]
+//	[0 0 1]
+//
 // There should be space for 6 floats in the return buffer for the values a-f.
 func (c *Context) CurrentTransform() TransformMatrix {
 	return c.getState().xform

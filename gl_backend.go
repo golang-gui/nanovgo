@@ -3,8 +3,9 @@ package nanovgo
 import (
 	"errors"
 	"fmt"
-	"github.com/goxjs/gl"
 	"strings"
+
+	"github.com/golang-gui/nanovgo/gl"
 )
 
 const (
@@ -14,8 +15,17 @@ const (
 	glnvgMaxLOCS
 )
 
+type GlContext interface {
+	GetProcAddress(name string) (uintptr, error)
+}
+
 // NewContext makes new NanoVGo context that is entry point of this API
-func NewContext(flags CreateFlags) (*Context, error) {
+func NewContext(glCtx GlContext, flags CreateFlags) (*Context, error) {
+	err := gl.Init(glCtx.GetProcAddress)
+	if err != nil {
+		return nil, fmt.Errorf("gl init err: %w", err)
+	}
+
 	params := &glParams{
 		isEdgeAntiAlias: (flags & AntiAlias) != 0,
 		context: &glContext{
