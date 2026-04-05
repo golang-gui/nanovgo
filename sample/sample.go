@@ -1,15 +1,35 @@
+//go:build !js
 // +build !js
 
 package main
 
+/*
+	#define WIN32_LEAN_AND_MEAN 1
+	#include <windows.h>
+	#include <stdlib.h>
+	static HMODULE ogl32dll = NULL;
+	static void* getProcAddress(const char* name) {
+		void* pf = wglGetProcAddress((LPCSTR) name);
+		if (pf) {
+			return pf;
+		}
+		if (ogl32dll == NULL) {
+			ogl32dll = LoadLibraryA("opengl32.dll");
+		}
+		return GetProcAddress(ogl32dll, (LPCSTR) name);
+	}
+*/
+import "C"
 import (
 	"fmt"
-	"github.com/goxjs/gl"
+	"github.com/goexlib/cgo"
+	"github.com/golang-gui/nanovgo"
+	"github.com/golang-gui/nanovgo/gl"
+	"github.com/golang-gui/nanovgo/perfgraph"
 	"github.com/goxjs/glfw"
-	"github.com/shibukawa/nanovgo"
-	"github.com/shibukawa/nanovgo/perfgraph"
-	"github.com/shibukawa/nanovgo/sample/demo"
 	"log"
+	"runtime"
+	"sample/demo"
 )
 
 var blowup bool
@@ -25,8 +45,23 @@ func key(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods gl
 	}
 }
 
+type wglContext int
+
+func (c wglContext) GetProcAddress(name string) (uintptr, error) {
+	cName := cgo.CString(name)
+	proc := C.getProcAddress((*C.char)(cName))
+	runtime.KeepAlive(cName)
+	return uintptr(proc), nil
+}
+
+type contextWatcher int
+
+func (contextWatcher) OnMakeCurrent(context interface{}) {}
+
+func (contextWatcher) OnDetach() {}
+
 func main() {
-	err := glfw.Init(gl.ContextWatcher)
+	err := glfw.Init(contextWatcher(0))
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +77,17 @@ func main() {
 	window.SetKeyCallback(key)
 	window.MakeContextCurrent()
 
-	ctx, err := nanovgo.NewContext(0 /*nanovgo.AntiAlias | nanovgo.StencilStrokes | nanovgo.Debug*/)
+	err = gl.Init(func(symbol string) (fn uintptr, err error) {
+		cName := cgo.CString(symbol)
+		proc := C.getProcAddress((*C.char)(cName))
+		runtime.KeepAlive(cName)
+		return uintptr(proc), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	ctx, err := nanovgo.NewContext(wglContext(0), 0 /*nanovgo.AntiAlias | nanovgo.StencilStrokes | nanovgo.Debug*/)
 	defer ctx.Delete()
 
 	if err != nil {
