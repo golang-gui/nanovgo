@@ -140,7 +140,7 @@ func loadGlFuncs(loadFn LoadFunc) (err error) {
 func loadGlFunc(name string) (symbol cgo.Symbol) {
 	fn, err := load(name)
 	if err != nil {
-		panic(fmt.Errorf("gl: load %s err: %v", name))
+		panic(fmt.Errorf("gl: load %s err: %v", name, err))
 	}
 	if fn == 0 {
 		panic(fmt.Errorf("gl: can not load %s", name))
