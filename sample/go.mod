@@ -5,7 +5,7 @@ go 1.24
 replace github.com/golang-gui/nanovgo => ../
 
 require (
-	github.com/goexlib/cgo v0.0.1
+	github.com/goexlib/cgo v0.0.2
 	github.com/golang-gui/nanovgo v0.0.0-00010101000000-000000000000
 	github.com/goxjs/glfw v0.0.0-20230704040236-622eb27e272a
 )
