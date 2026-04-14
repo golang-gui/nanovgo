@@ -784,10 +784,25 @@ func (c *Context) CreateFont(name, filePath string) int {
 	return c.fs.AddFont(name, filePath)
 }
 
+// CreateFontWithIndex creates font from a TTC file by specifying the font index.
+// index: 0-based index of the font in the TTC collection
+// Returns handle to the font, or -1 if failed.
+func (c *Context) CreateFontWithIndex(name, filePath string, index int) int {
+	return c.fs.AddFontWithIndex(name, filePath, index)
+}
+
 // CreateFontFromMemory creates image by loading it from the specified memory chunk.
 // Returns handle to the font.
 func (c *Context) CreateFontFromMemory(name string, data []byte, freeData uint8) int {
 	return c.fs.AddFontFromMemory(name, data, freeData)
+}
+
+// CreateFontWithIndexFromMemory creates font from memory data with a specific index (for TTC).
+// data: font file data (TTF or TTC)
+// index: 0-based index of the font in the TTC collection
+// Returns handle to the font, or -1 if failed.
+func (c *Context) CreateFontWithIndexFromMemory(name string, data []byte, index int) int {
+	return c.fs.AddFontWithIndexFromMemory(name, data, index, 1)
 }
 
 // FindFont finds a loaded font of specified name, and returns handle to it, or -1 if the font is not found.

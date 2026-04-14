@@ -20,6 +20,22 @@ type FontInfo struct {
 	indexToLocFormat int // format needed to map from glyph index to glyph
 }
 
+// GetFontCount returns the number of fonts in the data.
+// For regular .ttf files, it returns 1.
+// For .ttc (TrueType Collection) files, it returns the number of fonts in the collection.
+// Returns 0 if the data is not a valid font file.
+func GetFontCount(data []byte) int {
+	if isFont(data) {
+		return 1
+	}
+	if string(data[0:4]) == "ttcf" {
+		if u32(data, 4) == 0x00010000 || u32(data, 4) == 0x00020000 {
+			return int(u32(data, 8))
+		}
+	}
+	return 0
+}
+
 // Each .ttf/.ttc file may have more than one font. Each font has a sequential
 // index number starting from 0. Call this function to get the font offset for
 // a given index; it returns -1 if the index is out of range. A regular .ttf
@@ -42,10 +58,102 @@ func GetFontOffsetForIndex(data []byte, index int) int {
 			if index >= n {
 				return -1
 			}
-			return int(u32(data, 12+index*14))
+			return int(u32(data, 12+index*4))
 		}
 	}
 	return -1
+}
+
+// GetFontName returns the fullname of the font at the given index.
+// For .ttf files, use index 0.
+// For .ttc files, use the appropriate font index (0-based).
+// Returns an empty string if the font name cannot be retrieved.
+func GetFontName(data []byte, index int) string {
+	fontOffset := GetFontOffsetForIndex(data, index)
+	if fontOffset < 0 {
+		return ""
+	}
+
+	nameTable := findTable(data, fontOffset, "name")
+	if nameTable == 0 {
+		return ""
+	}
+
+	format := int(u16(data, nameTable))
+	if format != 0 && format != 1 {
+		return ""
+	}
+
+	count := int(u16(data, nameTable+2))
+	stringOffset := int(u32(data, nameTable+4))
+
+	recordsEnd := nameTable + 6 + count*12
+
+	var stringsStart int
+	if stringOffset == 0 || stringOffset >= len(data) {
+		stringsStart = recordsEnd
+	} else {
+		calculatedPos := nameTable + stringOffset
+		if calculatedPos >= len(data) || calculatedPos < nameTable {
+			stringsStart = recordsEnd
+		} else {
+			stringsStart = calculatedPos
+		}
+	}
+
+	for i := 0; i < count; i++ {
+		recordOffset := nameTable + 6 + i*12
+		if recordOffset+12 > len(data) {
+			break
+		}
+
+		platformID := int(u16(data, recordOffset))
+		encodingID := int(u16(data, recordOffset+2))
+		languageID := int(u16(data, recordOffset+4))
+		nameID := int(u16(data, recordOffset+6))
+		length := int(u16(data, recordOffset+8))
+		strOffsetInStrings := int(u16(data, recordOffset+10))
+
+		if nameID == 4 && languageID == 1033 {
+			strOffset := stringsStart + strOffsetInStrings
+			if strOffset+length > len(data) || strOffset < nameTable {
+				strOffsetAlt := recordsEnd + strOffsetInStrings
+				if strOffsetAlt+length > len(data) || strOffsetAlt < nameTable {
+					continue
+				}
+				strOffset = strOffsetAlt
+			}
+
+			if platformID == PLATFORM_ID_MICROSOFT && (encodingID == 1 || encodingID == 10) && length >= 2 && data[strOffset] == 0 {
+				return decodeUTF16BE(data[strOffset : strOffset+length])
+			}
+
+			if platformID == PLATFORM_ID_UNICODE && (encodingID == 0 || encodingID == 1 || encodingID == 2) && length >= 2 && data[strOffset] == 0 {
+				return decodeUTF16BE(data[strOffset : strOffset+length])
+			}
+
+			return string(data[strOffset : strOffset+length])
+		}
+	}
+	return ""
+}
+
+func decodeUTF16BE(data []byte) string {
+	result := make([]rune, 0, len(data)/2)
+	for i := 0; i+1 < len(data); i += 2 {
+		c := uint16(data[i])<<8 | uint16(data[i+1])
+		result = append(result, rune(c))
+	}
+	return string(result)
+}
+
+func decodeUTF16LE(data []byte) string {
+	result := make([]rune, 0, len(data)/2)
+	for i := 0; i+1 < len(data); i += 2 {
+		c := uint16(data[i+1])<<8 | uint16(data[i])
+		result = append(result, rune(c))
+	}
+	return string(result)
 }
 
 // Given an offset into the file that defines a font, this function builds the

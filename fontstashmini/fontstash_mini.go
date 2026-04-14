@@ -1,10 +1,9 @@
 package fontstashmini
 
 import (
+	"github.com/golang-gui/nanovgo/fontstashmini/truetype"
 	"io/ioutil"
 	"math"
-
-	"github.com/golang-gui/nanovgo/fontstashmini/truetype"
 )
 
 const (
@@ -136,8 +135,24 @@ func (stash *FontStash) AddFont(name, path string) int {
 	return stash.AddFontFromMemory(name, data, 1)
 }
 
+func (stash *FontStash) AddFontWithIndex(name, path string, fontIndex int) int {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return INVALID
+	}
+	return stash.AddFontWithIndexFromMemory(name, data, fontIndex, 1)
+}
+
 func (stash *FontStash) AddFontFromMemory(name string, data []byte, freeData uint8) int {
-	fontInstance, err := truetype.InitFont(data, 0)
+	return stash.AddFontWithIndexFromMemory(name, data, 0, freeData)
+}
+
+func (stash *FontStash) AddFontWithIndexFromMemory(name string, data []byte, fontIndex int, freeData uint8) int {
+	offset := truetype.GetFontOffsetForIndex(data, fontIndex)
+	if offset < 0 {
+		return INVALID
+	}
+	fontInstance, err := truetype.InitFont(data, offset)
 	if err != nil {
 		return INVALID
 	}
