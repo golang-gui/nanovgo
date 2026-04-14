@@ -1,9 +1,10 @@
 package fontstashmini
 
 import (
-	"github.com/golang-gui/nanovgo/fontstashmini/truetype"
 	"io/ioutil"
 	"math"
+
+	"github.com/golang-gui/nanovgo/fontstashmini/truetype"
 )
 
 const (
@@ -58,7 +59,6 @@ type Font struct {
 	font      *truetype.FontInfo
 	name      string
 	data      []byte
-	freeData  uint8
 	ascender  float32
 	descender float32
 	lineh     float32
@@ -132,7 +132,7 @@ func (stash *FontStash) AddFont(name, path string) int {
 	if err != nil {
 		return INVALID
 	}
-	return stash.AddFontFromMemory(name, data, 1)
+	return stash.AddFontFromMemory(name, data)
 }
 
 func (stash *FontStash) AddFontWithIndex(name, path string, fontIndex int) int {
@@ -140,14 +140,14 @@ func (stash *FontStash) AddFontWithIndex(name, path string, fontIndex int) int {
 	if err != nil {
 		return INVALID
 	}
-	return stash.AddFontWithIndexFromMemory(name, data, fontIndex, 1)
+	return stash.AddFontWithIndexFromMemory(name, data, fontIndex)
 }
 
-func (stash *FontStash) AddFontFromMemory(name string, data []byte, freeData uint8) int {
-	return stash.AddFontWithIndexFromMemory(name, data, 0, freeData)
+func (stash *FontStash) AddFontFromMemory(name string, data []byte) int {
+	return stash.AddFontWithIndexFromMemory(name, data, 0)
 }
 
-func (stash *FontStash) AddFontWithIndexFromMemory(name string, data []byte, fontIndex int, freeData uint8) int {
+func (stash *FontStash) AddFontWithIndexFromMemory(name string, data []byte, fontIndex int) int {
 	offset := truetype.GetFontOffsetForIndex(data, fontIndex)
 	if offset < 0 {
 		return INVALID
@@ -163,7 +163,6 @@ func (stash *FontStash) AddFontWithIndexFromMemory(name string, data []byte, fon
 		glyphs:    make(map[GlyphKey]*Glyph),
 		name:      name,
 		data:      data,
-		freeData:  freeData,
 		font:      fontInstance,
 		ascender:  float32(ascent) / fh,
 		descender: float32(descent) / fh,
