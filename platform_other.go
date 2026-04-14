@@ -1,13 +1,15 @@
+//go:build (!arm || !arm64) && !js
 // +build !arm !arm64
 // +build !js
 
 package nanovgo
 
 import (
-	"log"
-	"unsafe"
 	"encoding/binary"
+	"fmt"
+	"log"
 	"math"
+	"unsafe"
 )
 
 type Float float32
@@ -35,6 +37,6 @@ func castFloat32ToByte(vertexes []float32) []byte {
 	return b
 }
 
-func dumpLog(values ...interface{}) {
-	log.Println(values...)
+func dumpLog(format string, args ...interface{}) {
+	log.Output(2, fmt.Sprintf(format, args...))
 }

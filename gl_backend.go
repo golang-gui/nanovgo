@@ -583,7 +583,7 @@ func (p *glParams) renderFlush() {
 		c.stencilFuncRef = 0
 		c.stencilFuncMask = 0xffffffff
 		b := castFloat32ToByte(c.vertexes)
-		//dumpLog("vertex:", c.vertexes)
+
 		// Upload vertex data
 		gl.BindBuffer(gl.ARRAY_BUFFER, c.vertexBuffer)
 		gl.BufferData(gl.ARRAY_BUFFER, b, gl.STREAM_DRAW)
