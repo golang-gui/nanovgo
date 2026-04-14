@@ -463,8 +463,8 @@ func (c *nvgPathCache) expandFill(w float32, lineJoin LineCap, miterLimit, fring
 		if fringe {
 			lw := w + wOff
 			rw := w - wOff
-			var lu float32
-			var ru float32 = 1.0
+			lu := float32(0.0)
+			ru := float32(1.0)
 
 			// Create only half a fringe for convex shapes so that
 			// the shape can be rendered without stenciling.
@@ -483,7 +483,7 @@ func (c *nvgPathCache) expandFill(w float32, lineJoin LineCap, miterLimit, fring
 					index = bevelJoin(dst, index, p0, p1, lw, rw, lu, ru, fringeWidth)
 				} else {
 					(&dst[index]).set(p1.x+(p1.dmx*lw), p1.y+(p1.dmy*lw), lu, 1)
-					(&dst[index+1]).set(p1.x+(p1.dmx*lw), p1.y+(p1.dmy*lw), lu, 1)
+					(&dst[index+1]).set(p1.x-(p1.dmx*rw), p1.y-(p1.dmy*rw), ru, 1)
 					index += 2
 				}
 				p1Index++
