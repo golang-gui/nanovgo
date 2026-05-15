@@ -1,5 +1,4 @@
-// +build darwin linux
-// +build arm arm64
+//go:build ios || android
 
 package nanovgo
 
