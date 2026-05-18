@@ -115,6 +115,8 @@ type glContext struct {
 	textures     []*glTexture
 	textureID    int
 	vertexBuffer gl.Buffer
+	vertexArray  gl.Uint
+	defaultTex   gl.Texture
 	flags        CreateFlags
 	calls        []glCall
 	paths        []glPath
@@ -274,7 +276,7 @@ func (c *glContext) setUniforms(uniformOffset, image int) {
 		c.bindTexture(&c.findTexture(image).tex)
 		checkError(c, "tex paint tex")
 	} else {
-		c.bindTexture(&gl.Texture{})
+		c.bindTexture(&c.defaultTex)
 	}
 }
 
@@ -431,7 +433,28 @@ func (p *glParams) renderCreate() error {
 	context.shader.getUniforms()
 
 	context.vertexBuffer = gl.CreateBuffer()
-	context.vertexBuffer = gl.CreateBuffer()
+	context.vertexArray = gl.GenVertexArray()
+
+	gl.BindVertexArray(context.vertexArray)
+	gl.BindBuffer(gl.ARRAY_BUFFER, context.vertexBuffer)
+
+	gl.EnableVertexAttribArray(gl.Attrib{0})
+	gl.EnableVertexAttribArray(gl.Attrib{1})
+	gl.VertexAttribPointer(gl.Attrib{0}, 2, gl.FLOAT, false, 4*4, 0)
+	gl.VertexAttribPointer(gl.Attrib{1}, 2, gl.FLOAT, false, 4*4, 8)
+
+	context.defaultTex = gl.CreateTexture()
+	gl.BindTexture(gl.TEXTURE_2D, context.defaultTex)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	whitePixel := []byte{255, 255, 255, 255}
+	gl.TexImage2D(gl.TEXTURE_2D, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, whitePixel)
+
+	gl.BindVertexArray(0)
+	gl.BindTexture(gl.TEXTURE_2D, gl.Texture{})
+	gl.BindBuffer(gl.ARRAY_BUFFER, gl.Buffer{})
 
 	checkError(context, "create done")
 	gl.Finish()
@@ -464,7 +487,7 @@ func (p *glParams) renderCreateTexture(texType nvgTextureType, w, h int, flags I
 		gl.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data)
 	} else {
 		data = prepareTextureBuffer(data, w, h, 1)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.LUMINANCE, gl.UNSIGNED_BYTE, data)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RED, gl.UNSIGNED_BYTE, data)
 	}
 
 	if (flags & ImageGenerateMipmaps) != 0 {
@@ -528,7 +551,7 @@ func (p *glParams) renderUpdateTexture(image, x, y, w, h int, data []byte) error
 	if tex.texType == nvgTextureRGBA {
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data)
 	} else {
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.LUMINANCE, gl.UNSIGNED_BYTE, data)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.RED, gl.UNSIGNED_BYTE, data)
 	}
 
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 4)
@@ -577,22 +600,17 @@ func (p *glParams) renderFlush() {
 		gl.StencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
 		gl.StencilFunc(gl.ALWAYS, 0, 0xffffffff)
 		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, gl.Texture{})
+		gl.BindTexture(gl.TEXTURE_2D, c.defaultTex)
 		c.stencilMask = 0xffffffff
 		c.stencilFunc = gl.ALWAYS
 		c.stencilFuncRef = 0
 		c.stencilFuncMask = 0xffffffff
 		b := castFloat32ToByte(c.vertexes)
 
-		// Upload vertex data
+		gl.BindVertexArray(c.vertexArray)
 		gl.BindBuffer(gl.ARRAY_BUFFER, c.vertexBuffer)
 		gl.BufferData(gl.ARRAY_BUFFER, b, gl.STREAM_DRAW)
-		gl.EnableVertexAttribArray(c.shader.vertexAttrib)
-		gl.EnableVertexAttribArray(c.shader.tcoordAttrib)
-		gl.VertexAttribPointer(c.shader.vertexAttrib, 2, gl.FLOAT, false, 4*4, 0)
-		gl.VertexAttribPointer(c.shader.tcoordAttrib, 2, gl.FLOAT, false, 4*4, 8)
 
-		// Set view and texture just once per frame.
 		gl.Uniform1i(c.shader.locations[glnvgLocTEX], 0)
 		gl.Uniform2fv(c.shader.locations[glnvgLocVIEWSIZE], c.view[:])
 
@@ -611,8 +629,7 @@ func (p *glParams) renderFlush() {
 				c.triangleStrip(call)
 			}
 		}
-		gl.DisableVertexAttribArray(c.shader.vertexAttrib)
-		gl.DisableVertexAttribArray(c.shader.tcoordAttrib)
+		gl.BindVertexArray(0)
 		gl.Disable(gl.CULL_FACE)
 		gl.BindBuffer(gl.ARRAY_BUFFER, gl.Buffer{})
 		gl.UseProgram(gl.Program{})
@@ -912,8 +929,8 @@ func maxVertexCount(paths []nvgPath) int {
 var fillVertexShader = `
 #ifdef NANOVG_GL3
    uniform vec2 viewSize;
-   in vec2 vertex;
-   in vec2 tcoord;
+   layout(location = 0) in vec2 vertex;
+   layout(location = 1) in vec2 tcoord;
    out vec2 ftcoord;
    out vec2 fpos;
 #else

@@ -67,10 +67,12 @@ func ActiveTexture(texture Enum) {
 }
 
 func TexImage2D(target Enum, level int, width, height int, format Enum, ty Enum, data []byte) {
+	// glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
 	call(glTexImage2D, uintptr(target), uintptr(level), uintptr(format), uintptr(width), uintptr(height), 0, uintptr(format), uintptr(ty), uintptr(cgo.CSlice(data)))
 }
 
 func TexSubImage2D(target Enum, level int, x, y, width, height int, format, ty Enum, data []byte) {
+	// glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
 	call(glTexSubImage2D, uintptr(target), uintptr(level), uintptr(x), uintptr(y), uintptr(width), uintptr(height), uintptr(format), uintptr(ty), uintptr(cgo.CSlice(data)))
 }
 
