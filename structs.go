@@ -251,7 +251,7 @@ func (c *nvgPathCache) calculateJoins(w float32, lineJoin LineCap, miterLimit fl
 			}
 
 			// Calculate if we should use bevel or miter for inner join.
-			limit := maxF(1.0, minF(p0.len, p1.len)*iw)
+			limit := maxF(1.01, minF(p0.len, p1.len)*iw)
 			if dmr2*limit*limit < 1.0 {
 				p1.flags |= nvgPrINNERBEVEL
 			}

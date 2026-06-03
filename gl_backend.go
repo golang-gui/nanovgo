@@ -802,7 +802,7 @@ func (p *glParams) renderStroke(paint *Paint, scissor *nvgScissor, fringe float3
 		c.convertPaint(u0, paint, scissor, strokeWidth, fringe, -1.0)
 		u1 := &uniforms[1]
 		u1.reset()
-		c.convertPaint(u1, paint, scissor, strokeWidth, fringe, -1.0-0.5/266.0)
+		c.convertPaint(u1, paint, scissor, strokeWidth, fringe, 1.0-0.5/255.0)
 	} else {
 		var frags []glFragUniforms
 		frags, call.uniformOffset = c.allocFragUniforms(1)

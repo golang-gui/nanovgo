@@ -335,13 +335,13 @@ func bevelJoin(dst []nvgVertex, index int, p0, p1 *nvgPoint, lw, rw, lu, ru, fri
 			(&dst[index]).set(p1.x+dlx0*lw, p1.y+dly0*lw, lu, 1)
 			(&dst[index+1]).set(rx0, ry0, ru, 1)
 
-			(&dst[index+2]).set(p1.x+dlx1*rw, p1.y+dly1*rw, lu, 1)
+			(&dst[index+2]).set(p1.x+dlx1*lw, p1.y+dly1*lw, lu, 1)
 			(&dst[index+3]).set(rx1, ry1, ru, 1)
 
 			index += 4
 		} else {
-			lx0 := p1.x + p1.dmx*rw
-			ly0 := p1.y + p1.dmy*rw
+			lx0 := p1.x + p1.dmx*lw
+			ly0 := p1.y + p1.dmy*lw
 
 			(&dst[index]).set(p1.x+dlx0*lw, p1.y+dly0*lw, lu, 1)
 			(&dst[index+1]).set(p1.x, p1.y, 0.5, 1)
@@ -381,7 +381,7 @@ func buttCapEnd(dst []nvgVertex, index int, p *nvgPoint, dx, dy, w, d, aa float3
 	(&dst[index]).set(px+dlx*w, py+dly*w, 0, 1)
 	(&dst[index+1]).set(px-dlx*w, py-dly*w, 1, 1)
 	(&dst[index+2]).set(px+dlx*w+dx*aa, py+dly*w+dy*aa, 0, 0)
-	(&dst[index+3]).set(px-dlx*w+dx*aa, py-dly*w-dy*aa, 1, 0)
+	(&dst[index+3]).set(px-dlx*w+dx*aa, py-dly*w+dy*aa, 1, 0)
 	return index + 4
 }
 
