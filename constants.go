@@ -79,6 +79,8 @@ const (
 	ImageFlippy ImageFlags = 1 << 3
 	// ImagePreMultiplied specifies image data has premultiplied alpha.
 	ImagePreMultiplied ImageFlags = 1 << 4
+	// ImageNearest uses nearest filtering instead of linear (useful for pixel-perfect text or pixel-art).
+	ImageNearest ImageFlags = 1 << 5
 )
 
 // Winding is used for changing filling strategy
