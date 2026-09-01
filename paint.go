@@ -14,7 +14,15 @@ type Paint struct {
 	innerColor Color
 	outerColor Color
 	image      int
+	kind       paintKind
 }
+
+type paintKind uint8
+
+const (
+	paintDefault paintKind = iota
+	paintBoxShadow
+)
 
 func (p *Paint) setPaintColor(color Color) {
 	p.xform = IdentityMatrix()
@@ -25,6 +33,7 @@ func (p *Paint) setPaintColor(color Color) {
 	p.innerColor = color
 	p.outerColor = color
 	p.image = 0
+	p.kind = paintDefault
 }
 
 // LinearGradient creates and returns a linear gradient. Parameters (sx,sy)-(ex,ey) specify the start and end coordinates
@@ -83,6 +92,21 @@ func BoxGradient(x, y, w, h, r, f float32, iColor, oColor Color) Paint {
 		feather:    maxF(1.0, f),
 		innerColor: iColor,
 		outerColor: oColor,
+	}
+}
+
+// BoxShadow creates a CSS-like Gaussian shadow mask for a rounded rectangle.
+// blurRadius is mapped to a Gaussian standard deviation of blurRadius/2. The
+// caller should fill a rectangle extending 1.5*blurRadius beyond the box.
+func BoxShadow(x, y, w, h, radius, blurRadius float32, color Color) Paint {
+	return Paint{
+		xform:      TranslateMatrix(x+w*0.5, y+h*0.5),
+		extent:     [2]float32{w * 0.5, h * 0.5},
+		radius:     radius,
+		feather:    maxF(0.0001, blurRadius*0.5),
+		innerColor: color,
+		outerColor: color,
+		kind:       paintBoxShadow,
 	}
 }
 

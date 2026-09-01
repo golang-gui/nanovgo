@@ -23,7 +23,7 @@ import (
 //
 // Fill and stroke render style can be either a solid color or a paint which is a gradient or a pattern.
 // Solid color is simply defined as a color value, different kinds of paints can be created
-// using LinearGradient(), BoxGradient(), RadialGradient() and ImagePattern().
+// using LinearGradient(), BoxGradient(), BoxShadow(), RadialGradient() and ImagePattern().
 //
 // Current render style can be saved and restored using Save() and Restore().
 //
@@ -53,7 +53,7 @@ import (
 //
 // # Paints
 //
-// NanoVG supports four types of paints: linear gradient, box gradient, radial gradient and image pattern.
+// NanoVG supports linear, box and radial gradients, rounded-box shadows, and image patterns.
 // These can be used as paints for strokes and fills.
 //
 // # Scissoring

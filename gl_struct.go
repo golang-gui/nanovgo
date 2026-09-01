@@ -9,6 +9,7 @@ const (
 	nsvgShaderFILLIMG
 	nsvgShaderSIMPLE
 	nsvgShaderIMG
+	nsvgShaderBOXSHADOW
 )
 
 type glnvgCallType int

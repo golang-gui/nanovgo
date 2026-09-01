@@ -259,7 +259,11 @@ func (c *glContext) convertPaint(frag *glFragUniforms, paint *Paint, scissor *nv
 			frag.setTexType(2)
 		}
 	} else {
-		frag.setType(nsvgShaderFILLGRAD)
+		if paint.kind == paintBoxShadow {
+			frag.setType(nsvgShaderBOXSHADOW)
+		} else {
+			frag.setType(nsvgShaderFILLGRAD)
+		}
 		frag.setRadius(paint.radius)
 		frag.setFeather(paint.feather)
 		frag.setPaintMat(paint.xform.Inverse().ToMat3x4())
@@ -903,14 +907,14 @@ func (p *glParams) renderDelete() {
 func dumpShaderError(shader gl.Shader, name, typeName string) error {
 	str := gl.GetShaderInfoLog(shader)
 	msg := fmt.Sprintf("Shader %s/%s error:\n%s\n", name, typeName, str)
-	dumpLog(msg)
+	dumpLog("%s", msg)
 	return errors.New(msg)
 }
 
 func dumpProgramError(program gl.Program, name string) error {
 	str := gl.GetProgramInfoLog(program)
 	msg := fmt.Sprintf("Program %s error:\n%s\n", name, str)
-	dumpLog(msg)
+	dumpLog("%s", msg)
 	return errors.New(msg)
 }
 
@@ -1016,6 +1020,59 @@ float sdroundrect(vec2 pt, vec2 ext, float rad) {
        return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rad;
 }
 
+float erfApprox(float v) {
+       float s = sign(v);
+       float a = abs(v);
+       float q = 1.0 + (0.278393 + (0.230389 + 0.078108*a*a)*a)*a;
+       q *= q;
+       return s - s/(q*q);
+}
+
+float normalCDF(float v) {
+       return 0.5 * (1.0 + erfApprox(v * 0.7071067811865476));
+}
+
+float gaussianRange(float lo, float hi, float center, float sigma) {
+       return normalCDF((hi-center)/sigma) - normalCDF((lo-center)/sigma);
+}
+
+float gaussianDensity(float distance, float sigma) {
+       float z = distance/sigma;
+       return exp(-0.5*z*z)/(2.5066282746310002*sigma);
+}
+
+float roundedCornerCutout(vec2 pt, vec2 ext, float rad, float sigma, float sx, float sy) {
+       vec2 corner = vec2(sx*(ext.x-rad), sy*(ext.y-rad));
+       vec2 outer = vec2(sx*ext.x, sy*ext.y);
+       vec2 lo = min(corner, outer) - vec2(3.0*sigma);
+       vec2 hi = max(corner, outer) + vec2(3.0*sigma);
+       if (pt.x < lo.x || pt.x > hi.x || pt.y < lo.y || pt.y > hi.y) return 0.0;
+       float stepSize = rad/16.0;
+       float sum = 0.0;
+       for (int i = 0; i < 16; i++) {
+               float u = (float(i)+0.5)*stepSize;
+               float x = corner.x + sx*u;
+               float arc = sqrt(max(rad*rad-u*u, 0.0));
+               float y0 = corner.y + sy*arc;
+               float y1 = sy*ext.y;
+               sum += gaussianDensity(x-pt.x, sigma) *
+                      gaussianRange(min(y0,y1), max(y0,y1), pt.y, sigma);
+       }
+       return sum*stepSize;
+}
+
+float roundedBoxGaussian(vec2 pt, vec2 ext, float rad, float sigma) {
+       float coverage = gaussianRange(-ext.x, ext.x, pt.x, sigma) *
+                        gaussianRange(-ext.y, ext.y, pt.y, sigma);
+       if (rad > 0.0) {
+               coverage -= roundedCornerCutout(pt, ext, rad, sigma, -1.0, -1.0);
+               coverage -= roundedCornerCutout(pt, ext, rad, sigma,  1.0, -1.0);
+               coverage -= roundedCornerCutout(pt, ext, rad, sigma, -1.0,  1.0);
+               coverage -= roundedCornerCutout(pt, ext, rad, sigma,  1.0,  1.0);
+       }
+       return clamp(coverage, 0.0, 1.0);
+}
+
 // Scissoring
 float scissorMask(vec2 p) {
        vec2 sc = (abs((scissorMat * vec3(p,1.0)).xy) - scissorExt);
@@ -1072,6 +1129,10 @@ void main(void) {
                if (texType == 2) color = vec4(color.x);
                color *= scissor;
                result = color * innerCol;
+       } else if (type == 4) {         // Gaussian rounded-box shadow
+               vec2 pt = (paintMat * vec3(fpos,1.0)).xy;
+               float coverage = roundedBoxGaussian(pt, extent, radius, feather);
+               result = innerCol * coverage * strokeAlpha * scissor;
        }
 #ifdef EDGE_AA
        if (strokeAlpha < strokeThr) discard;
