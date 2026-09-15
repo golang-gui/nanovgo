@@ -120,7 +120,7 @@ func AttachShader(program Program, shader Shader) {
 }
 
 func GetAttribLocation(p Program, name string) Attrib {
-	cName := cgo.CString(name)
+	cName := cgo.CStringTemp(name)
 	ret := call(glGetAttribLocation, uintptr(p.Value), uintptr(cName))
 	runtime.KeepAlive(cName)
 	return Attrib{uint(ret)}
@@ -128,7 +128,7 @@ func GetAttribLocation(p Program, name string) Attrib {
 
 func BindAttribLocation(program Program, index Uint, name string) {
 	//glBindAttribLocation(GLuint program, GLuint index, const GLchar *name)
-	cName := cgo.CString(name)
+	cName := cgo.CStringTemp(name)
 	call(glBindAttribLocation, uintptr(program.Value), uintptr(index), uintptr(cName))
 	runtime.KeepAlive(cName)
 }
@@ -143,7 +143,7 @@ func UseProgram(program Program) {
 
 func GetUniformLocation(program Program, name string) Uniform {
 	//glGetUniformLocation(GLuint program, const GLchar *name)
-	cName := cgo.CString(name)
+	cName := cgo.CStringTemp(name)
 	ret := call(glGetUniformLocation, uintptr(program.Value), uintptr(cName))
 	runtime.KeepAlive(cName)
 	return Uniform{int32(ret)}
@@ -174,11 +174,17 @@ func ShaderSource(shader Shader, sources ...string) {
 	//glShaderSource(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length)
 	cSources := make([]unsafe.Pointer, len(sources))
 	for i := range sources {
-		src := cgo.CString(sources[i])
-		defer runtime.KeepAlive(src)
-		cSources[i] = src
+		source := sources[i]
+		if source == "" {
+			// Each entry must point to a string, even when that string is empty.
+			// CStringTemp("") is NULL, not a pointer to a terminating NUL.
+			source = "\x00"
+		}
+		cSources[i] = cgo.CStringTemp(source)
 	}
 	call(glShaderSource, uintptr(shader.Value), uintptr(len(sources)), uintptr(cgo.CSlice(cSources)), 0)
+	// glShaderSource copies the source strings. The pointer slice keeps all
+	// temporary Go buffers alive until that synchronous call finishes.
 	runtime.KeepAlive(cSources)
 }
 

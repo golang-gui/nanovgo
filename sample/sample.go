@@ -48,7 +48,7 @@ func key(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods gl
 type wglContext int
 
 func (c wglContext) GetProcAddress(name string) (uintptr, error) {
-	cName := cgo.CString(name)
+	cName := cgo.CStringTemp(name)
 	proc := C.getProcAddress((*C.char)(cName))
 	runtime.KeepAlive(cName)
 	return uintptr(proc), nil
@@ -78,7 +78,7 @@ func main() {
 	window.MakeContextCurrent()
 
 	err = gl.Init(func(symbol string) (fn uintptr, err error) {
-		cName := cgo.CString(symbol)
+		cName := cgo.CStringTemp(symbol)
 		proc := C.getProcAddress((*C.char)(cName))
 		runtime.KeepAlive(cName)
 		return uintptr(proc), nil
