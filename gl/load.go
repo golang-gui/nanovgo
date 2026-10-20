@@ -148,6 +148,10 @@ func loadGlFunc(name string) (symbol cgo.Symbol) {
 	return cgo.Symbol(fn)
 }
 
+// Preserve pointer conversions at this outer entry point, before forwarding
+// uintptr arguments to the FFI library. Requires its matching CallRaw contract.
+//
+//go:uintptrescapes
 func call(fn cgo.Symbol, args ...uintptr) (ret uintptr) {
 	ret, _, _ = fn.CallRaw(args...)
 	return
