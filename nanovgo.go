@@ -197,6 +197,15 @@ func (c *Context) EndFrame() {
 	}
 }
 
+// SetCompositeOperation sets the compositing operation for subsequent drawing.
+// It is recorded with each draw command and restored by Save/Restore.
+func (c *Context) SetCompositeOperation(operation CompositeOperation) {
+	if operation > DestinationOut {
+		panic("nanovgo: invalid composite operation")
+	}
+	c.getState().composite = operation
+}
+
 // Save pushes and saves the current render state into a state stack.
 // A matching Restore() must be used to restore the state.
 func (c *Context) Save() {
@@ -726,7 +735,7 @@ func (c *Context) Fill() {
 	fillPaint.innerColor.A *= state.alpha
 	fillPaint.outerColor.A *= state.alpha
 
-	c.params.renderFill(&fillPaint, &state.scissor, c.fringeWidth, c.cache.bounds, c.cache.paths)
+	c.params.renderFill(&fillPaint, state.composite, &state.scissor, c.fringeWidth, c.cache.bounds, c.cache.paths)
 
 	// Count triangles
 	for i := 0; i < len(c.cache.paths); i++ {
@@ -768,7 +777,7 @@ func (c *Context) Stroke() {
 	} else {
 		c.cache.expandStroke(strokeWidth*0.5, state.lineCap, state.lineJoin, state.miterLimit, c.fringeWidth, c.tessTol)
 	}
-	c.params.renderStroke(&strokePaint, &state.scissor, c.fringeWidth, strokeWidth, c.cache.paths)
+	c.params.renderStroke(&strokePaint, state.composite, &state.scissor, c.fringeWidth, strokeWidth, c.cache.paths)
 
 	// Count triangles
 	for i := 0; i < len(c.cache.paths); i++ {
@@ -1567,7 +1576,7 @@ func (c *Context) renderText(vertexes []nvgVertex) {
 	paint.innerColor.A *= state.alpha
 	paint.outerColor.A *= state.alpha
 
-	c.params.renderTriangleStrip(&paint, &state.scissor, vertexes)
+	c.params.renderTriangleStrip(&paint, state.composite, &state.scissor, vertexes)
 
 	c.drawCallCount++
 	c.textTriCount += len(vertexes) / 3

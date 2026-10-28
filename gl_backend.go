@@ -626,8 +626,17 @@ func (p *glParams) renderFlush() {
 		gl.Uniform1i(c.shader.locations[glnvgLocTEX], 0)
 		gl.Uniform2fv(c.shader.locations[glnvgLocVIEWSIZE], c.view[:])
 
+		operation := SourceOver
 		for i := range c.calls {
 			call := &c.calls[i]
+			if call.composite != operation {
+				operation = call.composite
+				if operation == DestinationOut {
+					gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
+				} else {
+					gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+				}
+			}
 			switch call.callType {
 			case glnvgFILL:
 				c.fill(call)
@@ -653,11 +662,12 @@ func (p *glParams) renderFlush() {
 	c.uniforms = c.uniforms[:0]
 }
 
-func (p *glParams) renderFill(paint *Paint, scissor *nvgScissor, fringe float32, bounds [4]float32, paths []nvgPath) {
+func (p *glParams) renderFill(paint *Paint, operation CompositeOperation, scissor *nvgScissor, fringe float32, bounds [4]float32, paths []nvgPath) {
 	c := p.context
 	var glPaths []glPath
 	c.calls = append(c.calls, glCall{
 		pathCount: len(paths),
+		composite: operation,
 		image:     paint.image,
 	})
 	call := &c.calls[len(c.calls)-1]
@@ -770,12 +780,13 @@ func (p *glParams) renderFill(paint *Paint, scissor *nvgScissor, fringe float32,
 	c.convertPaint(paintFrag, paint, scissor, fringe, fringe, -1.0)
 }
 
-func (p *glParams) renderStroke(paint *Paint, scissor *nvgScissor, fringe float32, strokeWidth float32, paths []nvgPath) {
+func (p *glParams) renderStroke(paint *Paint, operation CompositeOperation, scissor *nvgScissor, fringe float32, strokeWidth float32, paths []nvgPath) {
 	c := p.context
 	var glPaths []glPath
 	p.context.calls = append(c.calls, glCall{})
 	call := &c.calls[len(c.calls)-1]
 	call.callType = glnvgSTROKE
+	call.composite = operation
 	glPaths, call.pathOffset = c.allocPath(len(paths))
 	call.pathCount = len(paths)
 	call.image = paint.image
@@ -824,7 +835,7 @@ func (p *glParams) renderStroke(paint *Paint, scissor *nvgScissor, fringe float3
 	}
 }
 
-func (p *glParams) renderTriangles(paint *Paint, scissor *nvgScissor, vertexes []nvgVertex) {
+func (p *glParams) renderTriangles(paint *Paint, operation CompositeOperation, scissor *nvgScissor, vertexes []nvgVertex) {
 	c := p.context
 
 	vertexCount := len(vertexes)
@@ -833,6 +844,7 @@ func (p *glParams) renderTriangles(paint *Paint, scissor *nvgScissor, vertexes [
 
 	c.calls = append(c.calls, glCall{
 		callType:       glnvgTRIANGLES,
+		composite:      operation,
 		image:          paint.image,
 		triangleOffset: vertexOffset / 4,
 		triangleCount:  vertexCount,
@@ -857,7 +869,7 @@ func (p *glParams) renderTriangles(paint *Paint, scissor *nvgScissor, vertexes [
 	f0.setType(nsvgShaderIMG)
 }
 
-func (p *glParams) renderTriangleStrip(paint *Paint, scissor *nvgScissor, vertexes []nvgVertex) {
+func (p *glParams) renderTriangleStrip(paint *Paint, operation CompositeOperation, scissor *nvgScissor, vertexes []nvgVertex) {
 	c := p.context
 
 	vertexCount := len(vertexes)
@@ -866,6 +878,7 @@ func (p *glParams) renderTriangleStrip(paint *Paint, scissor *nvgScissor, vertex
 
 	c.calls = append(c.calls, glCall{
 		callType:       glnvgTRIANGLESTRIP,
+		composite:      operation,
 		image:          paint.image,
 		triangleOffset: vertexOffset / 4,
 		triangleCount:  vertexCount,

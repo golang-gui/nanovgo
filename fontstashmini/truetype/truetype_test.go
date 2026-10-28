@@ -11,6 +11,8 @@ func Test_TTC(t *testing.T) {
 	switch runtime.GOOS {
 	case "windows":
 		filename = "C:/Windows/Fonts/simhei.ttf"
+	case "darwin":
+		filename = "/System/Library/Fonts/Helvetica.ttc"
 	case "linux":
 		filename = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 	}

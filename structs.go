@@ -14,10 +14,10 @@ type nvgParams interface {
 	renderViewport(width, height int)
 	renderCancel()
 	renderFlush()
-	renderFill(paint *Paint, scissor *nvgScissor, fringe float32, bounds [4]float32, paths []nvgPath)
-	renderStroke(paint *Paint, scissor *nvgScissor, fringe float32, strokeWidth float32, paths []nvgPath)
-	renderTriangles(paint *Paint, scissor *nvgScissor, vertexes []nvgVertex)
-	renderTriangleStrip(paint *Paint, scissor *nvgScissor, vertexes []nvgVertex)
+	renderFill(paint *Paint, operation CompositeOperation, scissor *nvgScissor, fringe float32, bounds [4]float32, paths []nvgPath)
+	renderStroke(paint *Paint, operation CompositeOperation, scissor *nvgScissor, fringe float32, strokeWidth float32, paths []nvgPath)
+	renderTriangles(paint *Paint, operation CompositeOperation, scissor *nvgScissor, vertexes []nvgVertex)
+	renderTriangleStrip(paint *Paint, operation CompositeOperation, scissor *nvgScissor, vertexes []nvgVertex)
 	renderDelete()
 }
 
@@ -58,6 +58,7 @@ type nvgScissor struct {
 
 type nvgState struct {
 	fill, stroke  Paint
+	composite     CompositeOperation
 	strokeWidth   float32
 	miterLimit    float32
 	lineJoin      LineCap
@@ -81,6 +82,7 @@ func (s *nvgState) reset() {
 	s.lineCap = Butt
 	s.lineJoin = Miter
 	s.alpha = 1.0
+	s.composite = SourceOver
 	s.xform = IdentityMatrix()
 	s.scissor.xform = IdentityMatrix()
 	s.scissor.xform[0] = 0.0

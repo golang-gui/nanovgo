@@ -25,6 +25,7 @@ const (
 
 type glCall struct {
 	callType       glnvgCallType
+	composite      CompositeOperation
 	image          int
 	pathOffset     int
 	pathCount      int

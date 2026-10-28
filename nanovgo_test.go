@@ -71,3 +71,51 @@ func TestStateSaveRestore2(t *testing.T) {
 		t.Errorf("Restore() should set saved xform, but %v", topStateAgain.xform)
 	}
 }
+
+// 命令排队后恢复状态，不能覆盖已排队的合成方式；不需要 GL 上下文。
+func TestCompositeCommandsKeepTheirOwnState(t *testing.T) {
+	params := &glParams{isEdgeAntiAlias: true, context: &glContext{flags: AntiAlias}}
+	c := &Context{params: params}
+	c.BeginFrame(100, 100, 1)
+	c.BeginPath()
+	c.Rect(2, 2, 20, 20)
+	c.Fill()
+	c.Save()
+	c.SetCompositeOperation(DestinationOut)
+	c.BeginPath()
+	c.Rect(4, 4, 8, 8)
+	c.Fill()
+	c.Stroke()
+	c.Restore()
+	c.BeginPath()
+	c.Rect(40, 40, 10, 10)
+	c.Fill()
+	calls := params.context.calls
+	want := []CompositeOperation{SourceOver, DestinationOut, DestinationOut, SourceOver}
+	if len(calls) != len(want) {
+		t.Fatalf("commands=%d, want %d", len(calls), len(want))
+	}
+	for i, op := range want {
+		if calls[i].composite != op {
+			t.Fatalf("command %d: operation=%v want %v", i, calls[i].composite, op)
+		}
+	}
+	c.SetCompositeOperation(DestinationOut)
+	vertices := []nvgVertex{{x: 1, y: 1}, {x: 2, y: 1}, {x: 2, y: 2}}
+	state := c.getState()
+	params.renderTriangles(&state.fill, state.composite, &state.scissor, vertices)
+	params.renderTriangleStrip(&state.fill, state.composite, &state.scissor, vertices)
+	for _, call := range params.context.calls[4:] {
+		if call.composite != DestinationOut {
+			t.Fatal("triangle command lost operation")
+		}
+	}
+	c.CancelFrame()
+	if len(params.context.calls) != 0 {
+		t.Fatal("cancel kept pending commands")
+	}
+	c.BeginFrame(100, 100, 2)
+	if c.getState().composite != SourceOver {
+		t.Fatal("BeginFrame retained composite operation")
+	}
+}

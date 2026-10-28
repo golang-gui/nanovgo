@@ -1,5 +1,16 @@
 package nanovgo
 
+// CompositeOperation selects how source pixels combine with the destination.
+// Colors use premultiplied alpha. The operation is saved by Save/Restore.
+type CompositeOperation uint8
+
+const (
+	// SourceOver draws source pixels over the destination (the default).
+	SourceOver CompositeOperation = iota
+	// DestinationOut removes destination pixels in proportion to source alpha.
+	DestinationOut
+)
+
 // CreateFlags is used when NewContext() to create NanoVGo context.
 type CreateFlags int
 
