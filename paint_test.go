@@ -20,3 +20,28 @@ func TestBoxShadowPaint(t *testing.T) {
 		t.Fatalf("solid color retained box shadow kind: %v", paint.kind)
 	}
 }
+
+func TestCurvedFillUsesCoverageStencil(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		alpha     uint8
+		points    int
+		operation CompositeOperation
+		want      glnvgCallType
+	}{
+		{"半透明曲线", 128, 8, SourceOver, glnvgFILL},
+		{"擦除曲线", 255, 8, DestinationOut, glnvgFILL},
+		{"不透明曲线快捷路径", 255, 8, SourceOver, glnvgCONVEXFILL},
+		{"矩形快捷路径", 128, 4, SourceOver, glnvgCONVEXFILL},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			context := &glContext{flags: AntiAlias}
+			params := &glParams{context: context}
+			paint := Paint{innerColor: RGBA(20, 40, 60, tc.alpha), outerColor: RGBA(20, 40, 60, tc.alpha), xform: IdentityMatrix()}
+			params.renderFill(&paint, tc.operation, &nvgScissor{extent: [2]float32{-1, -1}}, 1, [4]float32{0, 0, 10, 10}, []nvgPath{{convex: true, count: tc.points}})
+			if len(context.calls) != 1 || context.calls[0].callType != tc.want {
+				t.Fatal("覆盖率路径选择错误", context.calls)
+			}
+		})
+	}
+}

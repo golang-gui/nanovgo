@@ -307,24 +307,37 @@ func (c *glContext) fill(call *glCall) {
 	}
 	gl.Enable(gl.CULL_FACE)
 
-	// Draw anti-aliased pixels
+	// Paint the covered interior once, retaining its stencil for the fringe.
 	gl.ColorMask(true, true, true, true)
 	c.setUniforms(call.uniformOffset+1, call.image)
+	c.setStencilFunc(gl.NOTEQUAL, 0x00, 0xff)
+	if c.flags&AntiAlias == 0 {
+		gl.StencilOp(gl.ZERO, gl.ZERO, gl.ZERO)
+		gl.DrawArrays(gl.TRIANGLES, call.triangleOffset, call.triangleCount)
+		gl.Disable(gl.STENCIL_TEST)
+		return
+	}
+	gl.StencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
+	gl.DrawArrays(gl.TRIANGLES, call.triangleOffset, call.triangleCount)
 
 	if c.flags&AntiAlias != 0 {
 		c.setStencilFunc(gl.EQUAL, 0x00, 0xff)
-		gl.StencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-		// Draw fringes
+		// Fringes can overlap at short arcs, concave joins and thin holes.
+		// Consume each uncovered pixel after its first contribution, just as
+		// stencil strokes prevent repeated alpha composition at joins.
+		gl.StencilOp(gl.KEEP, gl.KEEP, gl.INCR)
 		for i := call.pathOffset; i < pathSentinel; i++ {
 			path := &c.paths[i]
 			gl.DrawArrays(gl.TRIANGLE_STRIP, path.strokeOffset, path.strokeCount)
 		}
 	}
 
-	// Draw fill
-	c.setStencilFunc(gl.NOTEQUAL, 0x00, 0xff)
+	// Clear both the original winding stencil and the consumed fringe pixels.
+	gl.ColorMask(false, false, false, false)
+	c.setStencilFunc(gl.ALWAYS, 0x00, 0xff)
 	gl.StencilOp(gl.ZERO, gl.ZERO, gl.ZERO)
 	gl.DrawArrays(gl.TRIANGLES, call.triangleOffset, call.triangleCount)
+	gl.ColorMask(true, true, true, true)
 
 	gl.Disable(gl.STENCIL_TEST)
 }
@@ -673,7 +686,11 @@ func (p *glParams) renderFill(paint *Paint, operation CompositeOperation, scisso
 	call := &c.calls[len(c.calls)-1]
 	glPaths, call.pathOffset = c.allocPath(call.pathCount)
 
-	if len(paths) == 1 && paths[0].convex {
+	// Curved translucent outlines can have overlapping AA triangles when a
+	// radius is smaller than the fringe. Use the stencil fill in that case.
+	translucentCurve := len(paths) == 1 && paths[0].count > 4 && c.flags&AntiAlias != 0 &&
+		(paint.innerColor.A < 1 || paint.outerColor.A < 1 || paint.image != 0 || operation != SourceOver)
+	if len(paths) == 1 && paths[0].convex && !translucentCurve {
 		call.callType = glnvgCONVEXFILL
 	} else {
 		call.callType = glnvgFILL
