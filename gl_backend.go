@@ -261,6 +261,7 @@ func (c *glContext) convertPaint(frag *glFragUniforms, paint *Paint, scissor *nv
 	} else {
 		if paint.kind == paintBoxShadow {
 			frag.setType(nsvgShaderBOXSHADOW)
+			frag.setShadowCorners(paint.shadowCorners)
 		} else {
 			frag.setType(nsvgShaderFILLGRAD)
 		}
@@ -1072,15 +1073,20 @@ float gaussianDensity(float distance, float sigma) {
 }
 
 float roundedCornerCutout(vec2 pt, vec2 ext, float rad, float sigma, float sx, float sy) {
+       if (rad <= 0.0) return 0.0;
        vec2 corner = vec2(sx*(ext.x-rad), sy*(ext.y-rad));
        vec2 outer = vec2(sx*ext.x, sy*ext.y);
        vec2 lo = min(corner, outer) - vec2(3.0*sigma);
        vec2 hi = max(corner, outer) + vec2(3.0*sigma);
        if (pt.x < lo.x || pt.x > hi.x || pt.y < lo.y || pt.y > hi.y) return 0.0;
-       float stepSize = rad/16.0;
+       float center = sx*(pt.x-corner.x);
+       float u0 = max(0.0, center-3.0*sigma);
+       float u1 = min(rad, center+3.0*sigma);
+       if (u1 <= u0) return 0.0;
+       float stepSize = (u1-u0)/16.0;
        float sum = 0.0;
        for (int i = 0; i < 16; i++) {
-               float u = (float(i)+0.5)*stepSize;
+               float u = u0+(float(i)+0.5)*stepSize;
                float x = corner.x + sx*u;
                float arc = sqrt(max(rad*rad-u*u, 0.0));
                float y0 = corner.y + sy*arc;
@@ -1091,15 +1097,13 @@ float roundedCornerCutout(vec2 pt, vec2 ext, float rad, float sigma, float sx, f
        return sum*stepSize;
 }
 
-float roundedBoxGaussian(vec2 pt, vec2 ext, float rad, float sigma) {
+float roundedBoxGaussian(vec2 pt, vec2 ext, vec4 radii, float sigma) {
        float coverage = gaussianRange(-ext.x, ext.x, pt.x, sigma) *
                         gaussianRange(-ext.y, ext.y, pt.y, sigma);
-       if (rad > 0.0) {
-               coverage -= roundedCornerCutout(pt, ext, rad, sigma, -1.0, -1.0);
-               coverage -= roundedCornerCutout(pt, ext, rad, sigma,  1.0, -1.0);
-               coverage -= roundedCornerCutout(pt, ext, rad, sigma, -1.0,  1.0);
-               coverage -= roundedCornerCutout(pt, ext, rad, sigma,  1.0,  1.0);
-       }
+       coverage -= roundedCornerCutout(pt, ext, radii.x, sigma, -1.0, -1.0);
+       coverage -= roundedCornerCutout(pt, ext, radii.y, sigma,  1.0, -1.0);
+       coverage -= roundedCornerCutout(pt, ext, radii.z, sigma,  1.0,  1.0);
+       coverage -= roundedCornerCutout(pt, ext, radii.w, sigma, -1.0,  1.0);
        return clamp(coverage, 0.0, 1.0);
 }
 
@@ -1161,7 +1165,7 @@ void main(void) {
                result = color * innerCol;
        } else if (type == 4) {         // Gaussian rounded-box shadow
                vec2 pt = (paintMat * vec3(fpos,1.0)).xy;
-               float coverage = roundedBoxGaussian(pt, extent, radius, feather);
+               float coverage = roundedBoxGaussian(pt, extent, outerCol, feather);
                result = innerCol * coverage * strokeAlpha * scissor;
        }
 #ifdef EDGE_AA

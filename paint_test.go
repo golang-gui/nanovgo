@@ -21,6 +21,25 @@ func TestBoxShadowPaint(t *testing.T) {
 	}
 }
 
+func TestBoxShadowVaryingUniforms(t *testing.T) {
+	paint := BoxShadowVarying(10, 20, 40, 30, 1, 2, 3, 4, 8, RGBA(20, 40, 80, 128))
+	if paint.shadowCorners != ([4]float32{1, 2, 3, 4}) || paint.feather != 4 {
+		t.Fatal("四角或sigma错误", paint)
+	}
+	var uniform glFragUniforms
+	context := new(glContext)
+	if err := context.convertPaint(&uniform, &paint, &nvgScissor{extent: [2]float32{-1, -1}}, 1, 1, -1); err != nil {
+		t.Fatal(err)
+	}
+	if len(uniform) != 44 || uniform[28] != 1 || uniform[29] != 2 || uniform[30] != 3 || uniform[31] != 4 {
+		t.Fatal("阴影改变了uniform布局或半径映射", uniform)
+	}
+	paint.setPaintColor(RGBA(1, 2, 3, 255))
+	if paint.shadowCorners != ([4]float32{}) {
+		t.Fatal("普通画刷保留阴影几何")
+	}
+}
+
 func TestCurvedFillUsesCoverageStencil(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
