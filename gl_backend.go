@@ -44,10 +44,20 @@ type glShader struct {
 	tcoordAttrib gl.Attrib
 }
 
-func (s *glShader) createShader(name, header, opts, vShader, fShader string) error {
+func (s *glShader) createShader(name, header, opts, vShader, fShader string) (err error) {
 	program := gl.CreateProgram()
 
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
+	var fragmentShader gl.Shader
+	defer func() {
+		if err != nil {
+			gl.DeleteProgram(program)
+			gl.DeleteShader(vertexShader)
+			if fragmentShader.Valid() {
+				gl.DeleteShader(fragmentShader)
+			}
+		}
+	}()
 	gl.ShaderSource(vertexShader, strings.Join([]string{header, opts, vShader}, "\n"))
 	gl.CompileShader(vertexShader)
 	status := gl.Enum(gl.GetShaderi(vertexShader, gl.COMPILE_STATUS))
@@ -55,12 +65,12 @@ func (s *glShader) createShader(name, header, opts, vShader, fShader string) err
 		return dumpShaderError(vertexShader, name, "vert")
 	}
 
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
+	fragmentShader = gl.CreateShader(gl.FRAGMENT_SHADER)
 	gl.ShaderSource(fragmentShader, strings.Join([]string{header, opts, fShader}, "\n"))
 	gl.CompileShader(fragmentShader)
 	status = gl.Enum(gl.GetShaderi(fragmentShader, gl.COMPILE_STATUS))
 	if status != gl.TRUE {
-		return dumpShaderError(fragmentShader, name, "vert")
+		return dumpShaderError(fragmentShader, name, "frag")
 	}
 
 	gl.AttachShader(program, vertexShader)
@@ -505,7 +515,7 @@ func (p *glParams) renderCreateTexture(texType nvgTextureType, w, h int, flags I
 		gl.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data)
 	} else {
 		data = prepareTextureBuffer(data, w, h, 1)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RED, gl.UNSIGNED_BYTE, data)
+		gl.TexImage2DFormat(gl.TEXTURE_2D, 0, gl.R8, w, h, gl.RED, gl.UNSIGNED_BYTE, data)
 	}
 
 	if (flags & ImageGenerateMipmaps) != 0 {
@@ -926,6 +936,12 @@ func (p *glParams) renderDelete() {
 	c.shader.deleteShader()
 	if c.vertexBuffer.Valid() {
 		gl.DeleteBuffer(c.vertexBuffer)
+	}
+	if c.vertexArray != 0 {
+		gl.DeleteVertexArray(c.vertexArray)
+	}
+	if c.defaultTex.Valid() {
+		gl.DeleteTexture(c.defaultTex)
 	}
 	for _, texture := range c.textures {
 		if texture.tex.Valid() && (texture.flags&ImageNoDelete) == 0 {
