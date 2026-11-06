@@ -32,6 +32,9 @@ type glCall struct {
 	triangleOffset int
 	triangleCount  int
 	uniformOffset  int
+	coverageOffset int
+	coverageCount  int
+	coveragePixel  float32
 }
 
 type glPath struct {

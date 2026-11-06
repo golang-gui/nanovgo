@@ -1522,6 +1522,7 @@ func (c *Context) flattenPaths() {
 				p1 = &points[p1Index]
 			}
 		}
+		path.points = points[:path.count]
 	}
 }
 
